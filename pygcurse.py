@@ -279,7 +279,7 @@ def pygprint(self, *objs): # PY2
     This function can be used as a drop-in replacement of Python's print() to convert a stdio text-based Python program to a graphical Pygcurse program. See the PygcurseWindow class for details.
     """
 
-    self.write(' '.join([str(x) for x in objs]) + '\n')
+    self.write(u' '.join(unicode(x) for x in objs) + '\n')
 ''')
     else: # for Python 3 version
         exec(r'''
@@ -301,7 +301,7 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
 
     text = [str(obj)]
     if objs:
-        text.append(str(sep) + str(sep).join([str(x) for x in objs]))
+        text.append(str(sep) + str(sep).join(str(x) for x in objs))
     text.append(str(end))
 
     self.write(''.join(text), writefgcolor, writebgcolor)
