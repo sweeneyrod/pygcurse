@@ -55,6 +55,7 @@ import copy
 import time
 import sys
 import textwrap
+import unicodedata
 import pygame
 from pygame.locals import *
 
@@ -361,6 +362,10 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
         # "Dirty" means that the cell's state has been altered on the backend and it needs to be redrawn on pygame.Surface object (which will make the cell "clean").
         for x in range(self._width):
             for y in range(self._height):
+                # Skip if previous char was a CJK wide char
+                if x > 0 and iswide(self._screenchar[x-1][y]):
+                    continue
+
                 if self._screendirty[x][y]: # draw to surfaceobj all the dirty cells.
                     self._screendirty[x][y] = False
 
@@ -382,7 +387,7 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
                     # render the character and draw it to the surface
                     charsurf = self._font.render(self._screenchar[x][y], 1, cellfgcolor, cellbgcolor)
                     charrect = charsurf.get_rect()
-                    charrect.centerx = self._cellwidth * x + int(self._cellwidth / 2)
+                    charrect.centerx = self._cellwidth * x + int(self._cellwidth*getcharwidth(self._screenchar[x][y]) / 2)
                     charrect.bottom = self._cellheight * (y + 1) # TODO - not correct, this would put stuff like g, p, q higher than normal.
                     self._surfaceobj.blit(charsurf, charrect)
 
@@ -1280,13 +1285,18 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
                 #letterSurfs['?'] = letterSurfs['?'].convert_alpha()
         """
 
-        for i in range(len(text)):
-            if text[i] in ('\n', '\r'): # TODO - wait, this isn't right. We should be ignoring one of these newlines. Otherwise \r\n shows up as two newlines.
+        for ch in text:
+            if ch in ('\n', '\r'): # TODO - wait, this isn't right. We should be ignoring one of these newlines. Otherwise \r\n shows up as two newlines.
                 self._cursory += 1
                 self._cursorx = 0
             else:
+                # If the second half of a wide char will overflow the line, go to the next line.
+                if iswide(ch) and self._cursorx + 1 == self._width:
+                    self._cursory += 1
+                    self._cursorx = 0
+
                 # set the backend data structures that track the screen state
-                self._screenchar[self._cursorx][self._cursory] = text[i]
+                self._screenchar[self._cursorx][self._cursory] = ch
                 self._screenfgcolor[self._cursorx][self._cursory] = fgcolor
                 self._screenbgcolor[self._cursorx][self._cursory] = bgcolor
                 self._screendirty[self._cursorx][self._cursory] = True
@@ -1294,7 +1304,7 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
                 """
                 r = pygame.Rect(self._cellwidth * self._cursorx, self._cellheight * self._cursory, self._cellwidth, self._cellheight)
                 self._surfaceobj.fill(bgcolor, r)
-                charsurf = letterSurfs[text[i]]
+                charsurf = letterSurfs[ch]
                 charrect = charsurf.get_rect()
                 charrect.centerx = self._cellwidth * self._cursorx + int(self._cellwidth / 2)
                 charrect.bottom = self._cellheight * (self._cursory+1)
@@ -1303,7 +1313,7 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
                 """
 
                 # Move cursor over (and to next line if it moves past the right edge)
-                self._cursorx += 1
+                self._cursorx += getcharwidth(ch)
                 if self._cursorx >= self._width:
                     self._cursorx = 0
                     self._cursory += 1
@@ -2485,3 +2495,9 @@ def regionsoverlap(region1, region2):
 
 def withinregion(x, y, region):
     return x > region[0] and x < region[0] + region[2] and y > region[1] and y < region[1] + region[3]
+
+def iswide(ch):
+    return ch is not None and unicodedata.east_asian_width(unicode(ch)) in ('F', 'W')
+
+def getcharwidth(ch):
+    return 2 if iswide(ch) else 1
