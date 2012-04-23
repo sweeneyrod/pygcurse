@@ -370,6 +370,8 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
             for y in range(self._height):
                 # Skip if previous char was a CJK wide char
                 if x > 0 and iswide(self._screenchar[x-1][y]):
+                    # Set this unprinted char to a dummy value. Otherwise, it will screw up following chars (thanks to this same check) if it happened to have the value of a wide char.
+                    self._screenchar[x][y] = None
                     continue
 
                 if self._screendirty[x][y]: # draw to surfaceobj all the dirty cells.
