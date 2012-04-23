@@ -86,6 +86,12 @@ A "region" defines an area of the surface. It can be the following formats:
 Note about flickering: If your program is experiencing a lot of flicker, than you should disable the self._autoupdate member. By default, this is enabled and the screen is redrawn after each method call that makes a change to the screen.
 """
 
+# Wrapper for compatibility with Python 3.x, which has no unicode() function
+try:
+    unicode
+except NameError:
+    def unicode(string):
+        return str(string)
 
 DEFAULTFGCOLOR = pygame.Color(164, 164, 164, 255) # default foreground color is gray (must be a pygame.Color object)
 DEFAULTBGCOLOR = pygame.Color(0, 0, 0, 255) # default background color is black (must be a pygame.Color object)
@@ -280,7 +286,7 @@ def pygprint(self, *objs): # PY2
     This function can be used as a drop-in replacement of Python's print() to convert a stdio text-based Python program to a graphical Pygcurse program. See the PygcurseWindow class for details.
     """
 
-    self.write(u' '.join(unicode(x) for x in objs) + '\n')
+    self.write(' '.join(unicode(x) for x in objs) + '\n')
 ''')
     else: # for Python 3 version
         exec(r'''
@@ -1040,8 +1046,8 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
         """
         Print a single character to the coordinates on the surface. This function does not move the cursor.
         """
-        if type(char) != str:
-            raise Exception('Argument 1 must be str, not %s' % (str(type(char))))
+        if type(char) not in (str, unicode):
+            raise Exception('Argument 1 must be str or unicode, not %s' % (type(char)))
 
         if char == '':
             return
@@ -1071,8 +1077,8 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
     def putchars(self, chars, x=None, y=None, fgcolor=None, bgcolor=None, indent=False):
         # doc - does not modify the cursor. That's how putchars is different from print() or write()
         # doc - also, putchars does wrap but doesn't cause scrolls. (if you want a single line, just put putchar() calls in a loop)
-        if type(chars) != str:
-            raise Exception('Argument 1 must be str, not %s' % (str(type(chars))))
+        if type(chars) not in (str, unicode):
+            raise Exception('Argument 1 must be str or unicode, not %s' % (type(chars)))
 
         if x is None:
             x = self._cursorx
@@ -1090,20 +1096,21 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
 
         tempcurx = x
         tempcury = y
-        for i in range(len(chars)):
-            if tempcurx >= self._width or chars[i] in ('\n', '\r'): # TODO - wait, this isn't right. We should be ignoring one of these newlines.
+        for ch in chars:
+            # TODO - wait, this isn't right. We should be ignoring one of these newlines.
+            if tempcurx >= self._width or ch in ('\n', '\r') or (iswide(ch) and tempcurx + 1 == self._width):
                 tempcurx = indent and x or 0
                 tempcury += 1
             if tempcury >= self._height: # putchars() does not cause a scroll.
                 break
 
-            self._screenchar[tempcurx][tempcury] = chars[i]
+            self._screenchar[tempcurx][tempcury] = ch
             self._screendirty[tempcurx][tempcury] = True
             if fgcolor is not None:
                 self._screenfgcolor[tempcurx][tempcury] = fgcolor
             if bgcolor is not None:
                 self._screenbgcolor[tempcurx][tempcury] = bgcolor
-            tempcurx += 1
+            tempcurx += getcharwidth(ch)
 
         if self._autoupdate:
             self.update()
@@ -1903,7 +1910,7 @@ class PygcurseInput():
         """
         Inserts the string text into the buffer at the position of the cursor. This does not actually use the system's clipboard, it only pastes from the text parameter.
         """
-        text = str(text)
+        text = unicode(text)
         if not self.insertMode and len(text) + len(self.buffer) > self._maxlength:
             text = text[:self._maxlength - len(self.buffer)] # truncate the pasted text (this is what web browsers do, so I'm copying that behavior)
 
