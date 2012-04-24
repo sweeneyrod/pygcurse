@@ -1258,12 +1258,11 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
 
 
         # replace tabs with appropriate number of spaces
-        i = 0
         tempcursorx = self._cursorx - 1
-        while i < len(text):
-            if text[i] == '\n':
+        for i, ch in enumerate(text):
+            if ch == '\n':
                 tempcursorx = 0
-            elif text[i] == '\t':
+            elif ch == '\t':
                 numspaces = self._tabsize - ((i+1) + tempcursorx % self._tabsize)
                 if tempcursorx + numspaces >= self._width:
                     # tabbed past the edge, just go to first
@@ -1274,11 +1273,10 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
                     text = text[:i] + (' ' * numspaces) + text[i+1:]
                     tempcursorx += numspaces
             else:
-                tempcursorx += 1
+                tempcursorx += getcharwidth(ch)
 
             if tempcursorx >= self._width:
                 tempcursorx = 0
-            i += 1
 
         """
         # create a cache of surface objects for each letter in text
