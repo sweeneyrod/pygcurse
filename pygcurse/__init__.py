@@ -2,7 +2,7 @@
 Please forgive any typos or errors in the comments, I'll be cleaning them up as frequently as I can.
 
 
-Pygcurse v0.1 alpha
+Pygcurse v0.9.0 alpha
 
 Pygcurse (pronounced "pig curse") is a curses library emulator that runs on top of the Pygame framework. It provides an easy way to create text adventures, roguelikes, and console-style applications.
 
@@ -51,7 +51,6 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of Al Sweigart.
 """
 
-import copy
 import time
 import sys
 import textwrap
@@ -560,7 +559,7 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
         """Return a tuple of the pixel coordinates of the cell at cellx, celly."""
         if type(cellx) in (tuple, list):
             if type(celly) == bool: # shuffling around the parameters
-                isonscreen = celly
+                onscreen = celly
             cellx, celly = cellx
         if onscreen and not self.isonscreen(cellx, celly):
             return (None, None)
@@ -1345,10 +1344,10 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
     def _propsetcursorx(self, value):
         """
         Set the cursor's x coordinate.
-        
-        value - The new x coordinate. A negative value can be used to specify 
-        the x coordinate in terms of its relative distance to the right border 
-        of the surface. No operation will be performed if value is greater than 
+
+        value - The new x coordinate. A negative value can be used to specify
+        the x coordinate in terms of its relative distance to the right border
+        of the surface. No operation will be performed if value is greater than
         or equal to the width of the surface.
         """
         x = int(value)
@@ -1368,10 +1367,10 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
     def _propsetcursory(self, value):
         """
         Set the cursor's y coordinate.
-        
-        value - The new y coordinate. A negative value can be used to specify 
-        the y coordinate in terms of its relative distance to the bottom border 
-        of the surface. No operation will be performed if value is greater than 
+
+        value - The new y coordinate. A negative value can be used to specify
+        the y coordinate in terms of its relative distance to the bottom border
+        of the surface. No operation will be performed if value is greater than
         or equal to the height of the surface.
         """
         y = int(value)
@@ -2346,9 +2345,6 @@ class PygcurseTextbox:
     def _propsetmidbottom(self, value):
         self.x = value[0] - int(self.width / 2)
         self.y = value[1] - self.height
-    def _propsetcenter(self, value):
-        self.x = value[0] - int(self.width / 2)
-        self.y = value[1] - int(self.height / 2)
     def _propsetregion(self, value):
         self.x, self.y, self.width, self.height = pygsurf.getregion(value, False)
 
