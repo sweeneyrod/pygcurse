@@ -2,7 +2,7 @@
 from setuptools import setup
 
 
-# Dynamically calculate the version based on pyganim.VERSION.
+# Dynamically calculate the version based on pygcurse.VERSION.
 version = __import__('pygcurse').__version__
 
 
