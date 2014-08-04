@@ -51,6 +51,8 @@ authors and should not be interpreted as representing official policies, either 
 or implied, of Al Sweigart.
 """
 
+__version__ = '0.9.0'
+
 import time
 import sys
 import textwrap

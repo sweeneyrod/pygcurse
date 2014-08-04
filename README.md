@@ -1,4 +1,5 @@
-Pygcurse v0.1 alpha
+Pyganim
+=======
 
 http://inventwithpython.com/pygcurse
 https://github.com/asweigart/pygcurse
