@@ -1,57 +1,16 @@
 """
-Please forgive any typos or errors in the comments, I'll be cleaning them up as frequently as I can.
-
-
-Pygcurse v0.9.0 alpha
+Pygcurse v0.10.0 alpha
 
 Pygcurse (pronounced "pig curse") is a curses library emulator that runs on top of the Pygame framework. It provides an easy way to create text adventures, roguelikes, and console-style applications.
-
-Unfortunately, the curses library that comes with the Python standard library does not work on Windows. The excellent Console module from effbot provides curses-like features, but it only runs on Windows and not Mac/Linux. By using Pygame, Pygcurse is able to run on all platforms.
-
-Pygcurse provides several benefits over normal text-based stdio programs:
-
-    1) Color text and background.
-    2) The ability to move the cursor and print text anywhere in the console window.
-    3) The ability to make console apps that make use of the mouse.
-    4) The ability to have programs respond to individual key presses, instead of waiting for the user to type an entire string and press enter (as with input()/raw_input()).
-    5) Since the console window that Pygcurse uses is just a Pygame surface object, additional drawing and transformations can be applied to it. Multiple consoles can also be used in the same program.
-
 Pygcurse requires Pygame to be installed. Pygame can be downloaded from http://pygame.org
 
-Pygcurse was developed by Al Sweigart (al@inventwithpython.com)
+Al Sweigart (al@inventwithpython.com)
 https://github.com/asweigart/pygcurse
 
-
-Simplified BSD License:
-
-Copyright 2011 Al Sweigart. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are
-permitted provided that the following conditions are met:
-
-   1. Redistributions of source code must retain the above copyright notice, this list of
-      conditions and the following disclaimer.
-
-   2. Redistributions in binary form must reproduce the above copyright notice, this list
-      of conditions and the following disclaimer in the documentation and/or other materials
-      provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY Al Sweigart ''AS IS'' AND ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Al Sweigart OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-The views and conclusions contained in the software and documentation are those of the
-authors and should not be interpreted as representing official policies, either expressed
-or implied, of Al Sweigart.
+Released under a Simplified BSD License
 """
 
-__version__ = '0.9.0'
+__version__ = '0.10.0'
 
 import time
 import sys
@@ -59,6 +18,8 @@ import textwrap
 import unicodedata
 import pygame
 from pygame.locals import *
+
+RUNNING_ON_PYTHON2 = sys.version.startswith('2.')
 
 """
 Some nomenclature in this module's comments explained:
@@ -276,7 +237,7 @@ class PygcurseSurface(object):
     raw_input = input
 
     # This code makes my eyes (and IDEs) bleed (and maintenance a nightmare), but it's the only way to have syntactically correct code that is compatible with both Python 2 and Python 3:
-    if sys.version.startswith('2.'): # for Python 2 version
+    if RUNNING_ON_PYTHON2: # for Python 2 version
         exec(r'''
 def pygprint(self, *objs): # PY2
     """
@@ -1765,7 +1726,7 @@ class PygcurseWindow(PygcurseSurface):
         pygame.init()
         self._fullscreen = fullscreen
         fullscreen = fullscreen and FULLSCREEN or _NEW_WINDOW
-        if sys.version.startswith('2.'):
+        if RUNNING_ON_PYTHON2:
             super(PygcurseWindow, self).__init__(width, height, font, fgcolor, bgcolor, fullscreen) # for Python 2
         else:
             super().__init__(width, height, font, fgcolor, bgcolor, fullscreen) # for Python 3 and later
