@@ -191,7 +191,7 @@ class PygcurseSurface(object):
         self._surfaceobj = self._surfaceobj.convert_alpha() # TODO - This is needed for erasing, but does this have a performance hit?
 
 
-    def input(self, prompt='', x=None, y=None, maxlength=None, fgcolor=None, bgcolor=None, promptfgcolor=None, promptbgcolor=None, whitelistchars=None, blacklistchars=None, callbackfn=None, fps=None):
+    def input(self, prompt='', x=None, y=None, maxlength=None, fgcolor=None, bgcolor=None, promptfgcolor=None, promptbgcolor=None, whitelistchars=None, blacklistchars=None, callbackfn=None, fps=60, repeat=10, delay=0.25):
         """
         A pygcurse version of the input() and raw_input() functions. When called, it displays a cursor on the screen and lets the user type in a string. This function blocks until the user presses Enter, and it returns the string the user typed in.
 
@@ -205,22 +205,42 @@ class PygcurseSurface(object):
         - whitelistchars is a string of the characters that are allowed to be entered from the keyboard. If None, then all characters (except those in the blacklist, if one is specified) are allowed.
         - blacklistchars is a string of the characters that are prohibited to be entered from the keyboard. If None, then all characters (if they are in the whitelist, if one is specified) are allowed.
         - callbackfn is a function that is called during the input() method's loop. This can be used for any additional code that needs to be run while waiting for the user to enter text.
-        - fps specifies how many times per second this function should update the screen (ie, frames per second). If left at None, then input() will simply try to update as fast as possible.
+        - fps specifies how many times per second this function should update the screen (ie, frames per second). Default is 60.
+        - repeat specifies how many times a second a held down key's event is triggered
+        - delay is the number of seconds between a key being pressed, and its event being triggered due to it being held
+        
         """
         if fps is not None:
             clock = pygame.time.Clock()
 
         inputObj = PygcurseInput(self, prompt, x, y, maxlength, fgcolor, bgcolor, promptfgcolor, promptbgcolor, whitelistchars, blacklistchars)
         self.inputcursor = inputObj.startx, inputObj.starty
-
+        
+        counter = 0
+        held_down = []
         while True: # the event loop
+            counter += 1
+            if counter >= fps//repeat:
+                counter = 0
+                for e, t in held_down:
+                    if time.time() - t >= delay:
+                        inputObj.sendkeyevent(e)
+                
             self._inputcursormode = inputObj.insertMode and 'insert' or 'underline'
 
-            for event in pygame.event.get((KEYDOWN, KEYUP, QUIT)): # TODO - handle holding down the keys
+            for event in pygame.event.get((KEYDOWN, KEYUP, QUIT)):
                 if event.type == QUIT:
                     pygame.quit()
                     sys.exit()
-                elif event.type in (KEYDOWN, KEYUP):
+                    
+                if event.type == KEYUP:
+                    held_down = [(e,t) for (e,t) in held_down if e.key != event.key]
+                
+                elif event.type == KEYDOWN:
+                    if all(e[0] != event for e in held_down):
+                        held_down.append((event, time.time(),))
+                
+                if event.type in (KEYDOWN, KEYUP):
                     inputObj.sendkeyevent(event)
                     if inputObj.done:
                         return ''.join(inputObj.buffer)
@@ -231,8 +251,7 @@ class PygcurseSurface(object):
             inputObj.update()
             self.update()
 
-            if fps is not None:
-                clock.tick(fps)
+            clock.tick(fps)
 
     raw_input = input
 
