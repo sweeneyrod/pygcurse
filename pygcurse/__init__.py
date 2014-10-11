@@ -12,7 +12,11 @@ Released under a Simplified BSD License
 
 __version__ = '0.10.0'
 
+import traceback
+
+
 import time
+import datetime
 import sys
 import textwrap
 import unicodedata
@@ -105,7 +109,7 @@ class PygcurseSurface(object):
     """
     _pygcurseClass = 'PygcurseSurface'
 
-    def __init__(self, width=80, height=25, font=None, fgcolor=DEFAULTFGCOLOR, bgcolor=DEFAULTBGCOLOR, windowsurface=None):
+    def __init__(self, width=80, height=25, font=None, fgcolor=DEFAULTFGCOLOR, bgcolor=DEFAULTBGCOLOR, windowsurface=None, inputcursorblinking=True, inputcursorblinkspeed=1000):
         """
         Creates a new PygcurseSurface object.
 
@@ -114,6 +118,8 @@ class PygcurseSurface(object):
         - fgcolor is the foreground color  (ie the color of the text). It is set to either a pygame.Color object, an RGB tuple, an RGBA tuple, or a string that is a key in the colornames dict.
         - bgcolor is the background color of the text.
         - windowSurface is optional. If None, than the user is responsible for calling the update() method on this object and blitting it's surface to the screen, and calling pygame.display.update(). If a pygame.Surface object is specified, then PygcurseSurface object handles updating automatically (unless disabled). (See the update() method for more details.)
+        - inputcursorblinking is a boolean variable that tracks if the input cursor should be blinking or stay solid.
+        - blinkspeed is how many milliseconds should go by before the cursor changes state (if it is blinking).
         """
         pygame.init()
         self._cursorx = 0
@@ -121,6 +127,7 @@ class PygcurseSurface(object):
         self._cursorstack = []
         self._width = width
         self._height = height
+        self.DEBUG_X = 0
 
         # The self._screen* members are 2D lists that store data for each cell of the PygcurseSurface object. _screenchar[x][y] holds the character at cell x, y. _screenfgcolor and _screenbgcolor  stores the foreground/background color of the cell, etc.
         self._screenchar = [[None] * height for i in range(width)]
@@ -154,7 +161,9 @@ class PygcurseSurface(object):
         # - 'box', which is a box that covers the entire cell, and inverts the foreground and background colors.
         # inputcursorblinking is a boolean variable that tracks if the input cursor should be blinking or stay solid.
         self._inputcursormode = None # either None, 'underline', 'insert' or 'box'
-        self.inputcursorblinking = True
+        self.inputcursorblinking = inputcursorblinking
+        print(self.inputcursorblinking)
+        self.inputcursorblinkspeed = inputcursorblinkspeed
         self._inputcursorx = 0
         self._inputcursory = 0
 
@@ -191,7 +200,7 @@ class PygcurseSurface(object):
         self._surfaceobj = self._surfaceobj.convert_alpha() # TODO - This is needed for erasing, but does this have a performance hit?
 
 
-    def input(self, prompt='', x=None, y=None, maxlength=None, fgcolor=None, bgcolor=None, promptfgcolor=None, promptbgcolor=None, whitelistchars=None, blacklistchars=None, callbackfn=None, fps=60, repeat=10, delay=0.25):
+    def input(self, prompt='', x=None, y=None, maxlength=None, fgcolor=None, bgcolor=None, promptfgcolor=None, promptbgcolor=None, whitelistchars=None, blacklistchars=None, callbackfn=None, fps=60, repeat=20, delay=0.25):
         """
         A pygcurse version of the input() and raw_input() functions. When called, it displays a cursor on the screen and lets the user type in a string. This function blocks until the user presses Enter, and it returns the string the user typed in.
 
@@ -210,8 +219,7 @@ class PygcurseSurface(object):
         - delay is the number of seconds between a key being pressed, and its event being triggered due to it being held
         
         """
-        if fps is not None:
-            clock = pygame.time.Clock()
+        clock = pygame.time.Clock()
 
         inputObj = PygcurseInput(self, prompt, x, y, maxlength, fgcolor, bgcolor, promptfgcolor, promptbgcolor, whitelistchars, blacklistchars)
         self.inputcursor = inputObj.startx, inputObj.starty
@@ -331,7 +339,7 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
         return spaces % self._width, y + int(spaces / self._width)
 
 
-    def update(self):
+    def update(self, draw_cursor=True):
         """
         Update the encapsulated pygame.Surface object to match the state of this PygcurseSurface object. This needs to be done before the pygame.Surface object is blitted to the screen if you want the most up-to-date state displayed.
 
@@ -379,8 +387,9 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
                     charrect.centerx = self._cellwidth * x + int(self._cellwidth*getcharwidth(self._screenchar[x][y]) / 2)
                     charrect.bottom = self._cellheight * (y + 1) # TODO - not correct, this would put stuff like g, p, q higher than normal.
                     self._surfaceobj.blit(charsurf, charrect)
-
-        self._drawinputcursor()
+        
+        if draw_cursor:
+            self._drawinputcursor()
 
         # automatically blit to "window surface" pygame.Surface object if it was set.
         if self._windowsurface is not None and self._autoblit:
@@ -391,11 +400,19 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
 
     def _drawinputcursor(self):
         """Draws the input cursor directly onto the self._surfaceobj Surface object, if self._inputcursormode is not None."""
+
         if self._inputcursormode is not None and self._inputcursorx is not None and self._inputcursory is not None:
             x = self._inputcursorx # syntactic sugar
             y = self._inputcursory # syntactic sugar
-
-            if not self.inputcursorblinking or int(time.time() * 2) % 2 == 0:
+            
+            with open("f.txt", "a") as f:
+                traceback.print_stack(limit=10, file=f)
+                f.write(str(x))
+                f.write("\n")
+                
+            current_time = datetime.datetime.now()
+            microseconds = current_time.second* 10**6 + current_time.microsecond
+            if not self.inputcursorblinking or ((microseconds//1000) // self.inputcursorblinkspeed) % 2:
                 cellfgcolor, cellbgcolor = self.getdisplayedcolors(x, y)
 
                 if self._inputcursormode == 'underline':
@@ -1741,14 +1758,14 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
 class PygcurseWindow(PygcurseSurface):
     _pygcurseClass = 'PygcurseWindow'
 
-    def __init__(self, width=80, height=25, caption=None, font=None, fgcolor=DEFAULTFGCOLOR, bgcolor=DEFAULTBGCOLOR, fullscreen=False):
+    def __init__(self, width=80, height=25, caption=None, font=None, fgcolor=DEFAULTFGCOLOR, bgcolor=DEFAULTBGCOLOR, fullscreen=False, inputcursorblinking=True, inputcursorblinkspeed=1000):
         pygame.init()
         self._fullscreen = fullscreen
         fullscreen = fullscreen and FULLSCREEN or _NEW_WINDOW
         if RUNNING_ON_PYTHON2:
-            super(PygcurseWindow, self).__init__(width, height, font, fgcolor, bgcolor, fullscreen) # for Python 2
+            super(PygcurseWindow, self).__init__(width, height, font, fgcolor, bgcolor, fullscreen, inputcursorblinking, inputcursorblinkspeed) # for Python 2
         else:
-            super().__init__(width, height, font, fgcolor, bgcolor, fullscreen) # for Python 3 and later
+            super().__init__(width, height, font, fgcolor, bgcolor, fullscreen, inputcursorblinking, inputcursorblinkspeed) # for Python 3 and later
         if caption is not None:
             pygame.display.set_caption(caption)
 
@@ -1777,7 +1794,7 @@ class PygcurseWindow(PygcurseSurface):
 
 class PygcurseInput():
     """
-    A PygcurseInput object keeps track of the state of a string of text being entered, identical to the behavior of raw_input()/input().
+    A PygcurseInput object keeps track of the state of a string of text being entered, identical to the behaviour of raw_input()/input().
 
     Keypress events are sent to the object, which tracks the characters entered (in self.buffer) and the position of the cursor. The update() function draws the current state of the input to the PygcurseSurface object associated with it. (This is set in the constructor with the pygsurf parameter.)
 
@@ -1860,7 +1877,7 @@ class PygcurseInput():
 
 
     def backspace(self):
-        """Perform the action that happens when the backspac key is pressed."""
+        """Perform the action that happens when the backspace key is pressed."""
         if self.cursor == 0:
             return
         self.cursor -= 1
@@ -2008,6 +2025,7 @@ class PygcurseInput():
                     self.buffer[self.cursor] = char
                     self.cursor += 1
         self.pygsurf.inputcursor = self.pygsurf.getnthcellfrom(self.startx, self.starty, self.cursor)
+        self.pygsurf.inputcursor = (self.pygsurf.inputcursor[0] + 2, self.pygsurf.inputcursor[1])        # TODO - figure out why this is needed
 
 
     def _debug(self):
