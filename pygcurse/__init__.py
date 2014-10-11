@@ -124,7 +124,6 @@ class PygcurseSurface(object):
         self._cursorstack = []
         self._width = width
         self._height = height
-        self.DEBUG_X = 0
 
         # The self._screen* members are 2D lists that store data for each cell of the PygcurseSurface object. _screenchar[x][y] holds the character at cell x, y. _screenfgcolor and _screenbgcolor  stores the foreground/background color of the cell, etc.
         self._screenchar = [[None] * height for i in range(width)]
