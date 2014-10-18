@@ -12,6 +12,7 @@ Released under a Simplified BSD License
 
 __version__ = '0.10.0'
 
+
 import time
 import datetime
 import sys
@@ -158,6 +159,7 @@ class PygcurseSurface(object):
         # inputcursorblinking is a boolean variable that tracks if the input cursor should be blinking or stay solid.
         self._inputcursormode = None # either None, 'underline', 'insert' or 'box'
         self.inputcursorblinking = inputcursorblinking
+        print(self.inputcursorblinking)
         self.inputcursorblinkspeed = inputcursorblinkspeed
         self._inputcursorx = 0
         self._inputcursory = 0
@@ -334,7 +336,7 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
         return spaces % self._width, y + int(spaces / self._width)
 
 
-    def update(self):
+    def update(self, draw_cursor=True):
         """
         Update the encapsulated pygame.Surface object to match the state of this PygcurseSurface object. This needs to be done before the pygame.Surface object is blitted to the screen if you want the most up-to-date state displayed.
 
@@ -383,7 +385,8 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
                     charrect.bottom = self._cellheight * (y + 1) # TODO - not correct, this would put stuff like g, p, q higher than normal.
                     self._surfaceobj.blit(charsurf, charrect)
         
-        self._drawinputcursor()
+        if draw_cursor:
+            self._drawinputcursor()
 
         # automatically blit to "window surface" pygame.Surface object if it was set.
         if self._windowsurface is not None and self._autoblit:
@@ -398,7 +401,7 @@ def pygprint(self, obj='', *objs, sep=' ', end='\n', fgcolor=None, bgcolor=None,
         if self._inputcursormode is not None and self._inputcursorx is not None and self._inputcursory is not None:
             x = self._inputcursorx # syntactic sugar
             y = self._inputcursory # syntactic sugar
-
+                
             current_time = datetime.datetime.now()
             microseconds = current_time.second* 10**6 + current_time.microsecond
             if not self.inputcursorblinking or ((microseconds//1000) // self.inputcursorblinkspeed) % 2:
@@ -2014,7 +2017,7 @@ class PygcurseInput():
                     self.buffer[self.cursor] = char
                     self.cursor += 1
         self.pygsurf.inputcursor = self.pygsurf.getnthcellfrom(self.startx, self.starty, self.cursor)
-        self.pygsurf.inputcursor = (self.pygsurf.inputcursor[0] + 2, self.pygsurf.inputcursor[1])        # TODO - figure out why this is needed
+        self.pygsurf.inputcursor = (self.pygsurf.inputcursor[0] + len(self.prompt), self.pygsurf.inputcursor[1])        # TODO - figure out why this is needed
 
 
     def _debug(self):
@@ -2509,3 +2512,4 @@ def iswide(ch):
 
 def getcharwidth(ch):
     return 2 if iswide(ch) else 1
+
