@@ -17,6 +17,7 @@ import datetime
 import sys
 import textwrap
 import unicodedata
+from copy import deepcopy
 import pygame
 from pygame.locals import *
 
@@ -193,6 +194,15 @@ class PygcurseSurface(object):
 
         self._surfaceobj = pygame.Surface((self._pixelwidth, self._pixelheight))
         self._surfaceobj = self._surfaceobj.convert_alpha() # TODO - This is needed for erasing, but does this have a performance hit?
+        
+        self.input_history = []
+        
+    def redraw(self):
+        """
+        Redraw everything on the screen
+        """
+        self._screendirty = [[True] * self.height for i in range(self.width)]
+        self.update()
 
 
     def input(self, prompt='', x=None, y=None, maxlength=None, fgcolor=None, bgcolor=None, promptfgcolor=None, promptbgcolor=None, whitelistchars=None, blacklistchars=None, callbackfn=None, fps=60, repeat=20, delay=0.25):
@@ -215,8 +225,7 @@ class PygcurseSurface(object):
         
         """
         clock = pygame.time.Clock()
-
-        inputObj = PygcurseInput(self, prompt, x, y, maxlength, fgcolor, bgcolor, promptfgcolor, promptbgcolor, whitelistchars, blacklistchars)
+        inputObj = PygcurseInput(self, prompt, x, y, maxlength, fgcolor, bgcolor, promptfgcolor, promptbgcolor, whitelistchars, blacklistchars, self)
         self.inputcursor = inputObj.startx, inputObj.starty
         
         counter = 0
@@ -1791,10 +1800,11 @@ class PygcurseInput():
     """
 
 
-    def __init__(self, pygsurf=None, prompt='', x=None, y=None, maxlength=None, fgcolor=None, bgcolor=None, promptfgcolor=None, promptbgcolor=None, whitelistchars=None, blacklistchars=None):
+    def __init__(self, pygsurf=None, prompt='', x=None, y=None, maxlength=None, fgcolor=None, bgcolor=None, promptfgcolor=None, promptbgcolor=None, whitelistchars=None, blacklistchars=None, parent=None):
         self.buffer = []
         self.prompt = prompt
         self.pygsurf = pygsurf
+        self.parent = parent
         if maxlength is None and pygsurf is None:
             self._maxlength = 4094 # NOTE - Python's input()/raw_input() functions let you enter at most 4094 characters. PygcurseInput has this as a default unless you specify otherwise
         elif maxlength is None and x is not None and y is not None:
@@ -1846,7 +1856,9 @@ class PygcurseInput():
                            K_END:       self.end,
                            K_BACKSPACE: self.backspace,
                            K_DELETE:    self.delete,
-                           K_INSERT:    self.insert}
+                           K_INSERT:    self.insert,
+                           K_UP:        self.uparrow,
+                           K_DOWN:      self.downarrow,}
 
         if pygsurf._pygcurseClass == 'PygcurseWindow': # TODO - need a better way to identify the object
             self.pygsurface = pygsurf.surface
@@ -1854,6 +1866,9 @@ class PygcurseInput():
             self.pygsurface = pygsurf
         else:
             raise Exception('Invalid argument passed for pygsurf parameter.')
+            
+        self.history = parent.input_history
+        self.history_index = -1
 
 
     def updateerasebuffersize(self):
@@ -1907,9 +1922,34 @@ class PygcurseInput():
         """Perform the action that happens when the right arrow key is pressed."""
         if self.cursor < len(self.buffer):
             self.cursor += 1
-
-
-    def paste(text):
+            
+    def uparrow(self):
+        self.history_index += 1
+        if self.history_index >= len(self.history):
+            self.updateerasebuffersize()
+            del self.buffer[:]
+            self.cursor = 0
+            self.history_index = -1
+        else:
+            self.updateerasebuffersize()
+            self.buffer = deepcopy(self.history[self.history_index])
+            self.cursor = len(self.buffer)
+            
+    def downarrow(self):
+        self.history_index -= 1
+        if self.history_index == -1:
+            self.updateerasebuffersize()
+            del self.buffer[:]
+            self.cursor = 0
+            self.history_index = -2
+        else:
+            if self.history_index <= -2:
+                self.history_index = len(self.history) - 1
+            self.updateerasebuffersize()
+            self.buffer = deepcopy(self.history[self.history_index])
+            self.cursor = len(self.buffer)
+            
+    def paste(self, text):
         """
         Inserts the string text into the buffer at the position of the cursor. This does not actually use the system's clipboard, it only pastes from the text parameter.
         """
@@ -1983,7 +2023,6 @@ class PygcurseInput():
         """Sets self.done to True, which means that the user has intended to enter the currently typed in text as their complete response. While self.done is True, this object will no longer process additional keyboard events."""
         self.done = True
 
-
     def sendkeyevent(self, keyEvent):
         """Interpret the character that the pygame.event.Event object passed as keyEvent represents, and perform the associated action. These actions could be adding another character to the buffer, or manipulating the cursor position (such as when the arrow keys are pressed)."""
 
@@ -1994,6 +2033,7 @@ class PygcurseInput():
         char = interpretkeyevent(keyEvent)
         if char in ('\r', '\n') and keyEvent.type == KEYUP: # TODO - figure out which is the right one
             self.done = True
+            self.parent.input_history.insert(0, self.buffer)
             self.pygsurf.inputcursormode = None
             x, y = self.pygsurf.getnthcellfrom(self.startx, self.starty, self.cursor)
             self.pygsurf.write('\n') # print a newline to move the pygcurse surface object's cursor.
@@ -2076,7 +2116,6 @@ class PygcurseInput():
     promptfgcolor = property(_propgetpromptfgcolor, _propsetpromptfgcolor)
     promptbgcolor = property(_propgetpromptbgcolor, _propsetpromptbgcolor)
     promptcolors = property(_propgetpromptcolors, _propsetpromptcolors)
-
 
 
 class PygcurseTextbox:
