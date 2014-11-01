@@ -25,3 +25,9 @@ Pygcurse was developed by Al Sweigart (al@inventwithpython.com)
 https://github.com/asweigart/pygcurse
 
 The github repo contains several example programs.
+
+
+This fork
+=========
+
+This fork allows keys to be held rather than repeatedly pressed for PygcurseInput objects, and fixes a bug with the cursor flickering.
